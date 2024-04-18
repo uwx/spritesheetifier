@@ -850,6 +850,31 @@ declare module "mp4box" {
 		}
 
 		export class hvcCBox extends ContainerBox {
+			configurationVersion: number; // stream.readUint8();
+			general_profile_space: number; // tmp_byte >> 6;
+			general_tier_flag: number; // (tmp_byte & 0x20) >> 5;
+			general_profile_idc: number; // (tmp_byte & 0x1F);
+			general_profile_compatibility: number; // stream.readUint32();
+			general_constraint_indicator: number; // stream.readUint8Array(6);
+			general_level_idc: number; // stream.readUint8();
+			min_spatial_segmentation_idc: number; // stream.readUint16() & 0xFFF;
+			parallelismType: number; // (stream.readUint8() & 0x3);
+			chroma_format_idc: number; // (stream.readUint8() & 0x3);
+			bit_depth_luma_minus8: number; // (stream.readUint8() & 0x7);
+			bit_depth_chroma_minus8: number; // (stream.readUint8() & 0x7);
+			avgFrameRate: number; // stream.readUint16();
+			constantFrameRate: number; // (tmp_byte >> 6);
+			numTemporalLayers: number; // (tmp_byte & 0XD) >> 3;
+			temporalIdNested: number; // (tmp_byte & 0X4) >> 2;
+			lengthSizeMinusOne: number; // (tmp_byte & 0X3);
+			nalu_arrays: {
+				completeness: number,
+				nalu_type: number,
+				[idx: number]: {
+					data: Uint8Array
+				}
+			};
+
 			constructor(size?: number)
 
 			parse(stream: any): void

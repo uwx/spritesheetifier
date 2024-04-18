@@ -7,6 +7,7 @@
     let resultUrl: string;
     let tileWidth: number;
     let tileHeight: number;
+    let approxFrameRate: number | undefined;
 
     const workerPromise = wrapAsync<Api>(
         new Worker(new URL("./worker/worker.ts", import.meta.url), {
@@ -27,6 +28,7 @@
         tileWidth = result.tileWidth;
         tileHeight = result.tileHeight;
         frameCount = result.frames;
+        approxFrameRate = result.approxFrameRate;
         resultUrl = URL.createObjectURL(result.file);
     }
 </script>
@@ -36,5 +38,6 @@
 {#if resultUrl}
 <p>Tile size: {tileWidth}x{tileHeight}</p>
 <p>Frames: {frameCount}</p>
+<p>Approximate frame rate: {approxFrameRate}* <sup>*framerate may not be constant in the original GIF or video file</sup></p>
 <img src={resultUrl} alt="Generated spritesheet" style="max-width: 100%;"/>
 {/if}

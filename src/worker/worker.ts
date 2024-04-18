@@ -17,6 +17,8 @@ import {
 } from '@imagemagick/magick-wasm';
 import { fileTypeFromBlob, FileTypeParser, type FileTypeResult } from '@sgtpooki/file-type';
 import { MagickColor, MagickGeometry, MagickImageCollection } from '@imagemagick/magick-wasm';
+import { parseGIF, decompressFrames } from 'gifuct-js'
+
 import { default as magickWasmLocation } from '@imagemagick/magick-wasm/magick.wasm?url';
 import { default as mediaInfoWasmLocation } from 'mediainfo.js/MediaInfoModule.wasm?url';
 import { default as fontLocation } from './KaushanScript-Regular.ttf?url';
@@ -72,17 +74,23 @@ function getMetadata<TFormat extends FormatType>(mi: MediaInfo<TFormat>, file: F
     return mi.analyzeData(getSize, readChunk)
 }
 
+function parseRational(rat: string): number {
+    const [a, b] = rat.split('/');
+    return +a / +b;
+}
+
 export class Api {
     async tilefy(file: File) {
         const fileType = await fileTypeFromBlob(file) as FileTypeResult;
 
-        if (fileType?.mime.startsWith('video/')) {
+        if (fileType.mime.startsWith('video/')) {
             const libav = await LibAV.LibAV({ noworker: true });
 
             // https://stackoverflow.com/a/28376817
             let width: number | undefined;
             let height: number | undefined;
             let frameCount: number | undefined;
+            let approxFrameRate: number | undefined;
 
             // common case: parse with mp4box
             if (fileType.mime === 'video/mp4') {
@@ -92,6 +100,8 @@ export class Api {
                     mp4File.onError = e => reject(e);
                     mp4File.onReady = info => {
                         ({ video: { width, height }, nb_samples: frameCount } = info.videoTracks[0]);
+                        let { duration, timescale } = info.videoTracks[0];
+                        approxFrameRate = frameCount/(duration/timescale);
                         resolve();
                     };
 
@@ -122,6 +132,7 @@ export class Api {
                 width = metadata.media?.track.find(e => e.FrameCount)?.Width;
                 height = metadata.media?.track.find(e => e.FrameCount)?.Height;
                 frameCount = metadata.media?.track.find(e => e.FrameCount)?.FrameCount;
+                approxFrameRate = metadata.media?.track.find(e => e.FrameRate)?.FrameRate;
             }
 
             await libav.mkreadaheadfile('input', file);
@@ -130,9 +141,23 @@ export class Api {
             if (frameCount === undefined || width === undefined || height === undefined) {
                 // count frames + get width+height
                 await stdoutFile(libav);
-                await libav.ffprobe('-v', 'error', '-select_streams', 'v:0', '-count_frames', '-show_entries', 'stream=nb_read_frames,width,height', '-of', 'csv=p=0', 'input');
+                await libav.ffprobe('-v', 'error', '-select_streams', 'v:0', '-count_frames', '-show_entries', 'stream=nb_read_frames,width,height,avg_frame_rate,r_frame_rate', '-print_format', 'json', 'input');
                 await restoreStdout(libav);
-                [width, height, frameCount] = (await getStdout(libav)).trim().split(',').map(e => +e);
+                const ffprobeResult: {
+                    programs: [],
+                    streams: [{
+                        width: number,
+                        height: number,
+                        r_frame_rate: string,
+                        avg_frame_rate: string,
+                        nb_read_frames: string,
+                    }]
+                } = JSON.parse(await getStdout(libav));
+
+                const s = ffprobeResult.streams[0];
+                ({ width, height } = s);
+                frameCount = +s.nb_read_frames;
+                approxFrameRate = parseRational(s.avg_frame_rate);
             }
 
             // https://video.stackexchange.com/a/28411
@@ -153,6 +178,46 @@ export class Api {
                 tileWidth: Math.round(width * scale),
                 tileHeight: Math.round(height * scale),
                 frames: frameCount,
+                approxFrameRate
+            };
+        } else if (fileType.mime === 'image/gif') {
+            const buf = await file.arrayBuffer();
+
+            const gif = parseGIF(buf);
+
+            const frames = decompressFrames(gif, true);
+
+            const { width: tileWidth, height: tileHeight } = frames[0].dims;
+
+            let tilesX = Math.floor(Math.sqrt(frames.length));
+            let tilesY = Math.ceil(Math.sqrt(frames.length));
+
+            const canvas = new OffscreenCanvas(tileWidth * tilesX, tileHeight * tilesY);
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('Could not create canvas context');
+
+            let i = 0;
+            for (const frame of frames) {
+                let tileX = (i % tilesX) * tileWidth;
+                let tileY = Math.floor(i / tilesX) * tileHeight;
+
+                const dims = frame.dims;
+
+                ctx.putImageData(new ImageData(frame.patch, dims.width, dims.height), tileX + dims.left, tileY + dims.top);
+
+                i++;
+            }
+
+            const outBlob = await canvas.convertToBlob({ type: 'image/png' });
+
+            const totalTimeMs = frames.reduce((a, b) => a + b.delay, 0);
+
+            return {
+                file: new File([outBlob], 'image.png', { type: 'image/png' }),
+                tileWidth,
+                tileHeight,
+                frames: frames.length,
+                approxFrameRate: frames.length/(totalTimeMs/1000)
             };
         } else {
             await initMagickIfNotAlready();
@@ -165,7 +230,7 @@ export class Api {
             console.log('Quantum:', Quantum.depth);
             console.log('');
 
-            const { frameCount, montage, tileWidth, tileHeight } = ImageMagick.readCollection(new Uint8Array(buf), images => {
+            return ImageMagick.readCollection(new Uint8Array(buf), images => {
 
                 const montageSettings = new MontageSettings();
 
@@ -174,21 +239,15 @@ export class Api {
                 montageSettings.backgroundColor = new MagickColor(0, 0, 0, 0);
 
                 return {
-                    frameCount: images.length,
+                    file: images.montage(montageSettings, image => {
+                        return image.write(MagickFormat.Png, data => new File([data], 'image.png', { type: 'image/png' }));
+                    }),
+                    frames: images.length,
                     tileWidth: Math.max(...images.map(e => e.width)),
                     tileHeight: Math.max(...images.map(e => e.height)),
-                    montage: images.montage(montageSettings, image => {
-                        return image.write(MagickFormat.Png, data => new File([data], 'image.png', { type: 'image/png' }));
-                    })
+                    approxFrameRate: undefined
                 };
             });
-
-            return {
-                file: montage,
-                tileWidth,
-                tileHeight,
-                frames: frameCount,
-            };
         }
     }
 }

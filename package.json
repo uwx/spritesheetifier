@@ -29,6 +29,7 @@
     "buffer": "^6.0.3",
     "comlink": "^4.4.1",
     "file-type": "^19.0.0",
+    "gifuct-js": "^2.1.2",
     "mediainfo.js": "^0.2.2",
     "mp4box": "^0.5.2"
   }
