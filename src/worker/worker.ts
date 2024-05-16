@@ -1,6 +1,8 @@
 console.log('hi');
 
-import { LibAV } from './libav';
+globalThis._scriptDir = undefined;
+
+import LibAV from './libav';
 import { exposeAsync } from '../comlink-async';
 import { getStdout, restoreStdout, stdoutFile } from './libav-helpers';
 import { MP4FileSink } from './mp4-demux';

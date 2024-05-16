@@ -1,12 +1,7 @@
-console.log('a');
-import LibAV, { type LibAVWrapper } from '../libav.js/libav-5.1.6.1.1-d89883a-all';
-export { LibAV };
-export type * from 'libav.js';
-
-console.log('b');
-
-const libavVersion = '5.1.6.1.1-d89883a';
-const libavVariant = 'all';
+console.log('poop!');
+import LibAV, { type LibAVWrapper } from '@uwx/libav.js-all';
+export { LibAV as default };
+export type * from '@uwx/libav.js-all';
 
 declare module globalThis {
     export var LibAV: LibAVWrapper;
@@ -18,8 +13,10 @@ console.log('libav setup');
 
 LibAV.factory = (async () => {
     console.log('importing libav');
-    return (await import(`../libav.js/libav-5.1.6.1.1-d89883a-all.wasm`)).default;
+    return (await import(`@uwx/libav.js-all/factory/all.wasm`)).default;
 })();
-LibAV.wasmurl = (await import(`../libav.js/libav-5.1.6.1.1-d89883a-all.wasm.wasm?url`)).default;
+LibAV.wasmurl = (await import(`@uwx/libav.js-all/backend/all.wasm?url`)).default;
+
+console.log(LibAV);
 
 export type LibAVInstance = Awaited<ReturnType<typeof LibAV['LibAV']>>;

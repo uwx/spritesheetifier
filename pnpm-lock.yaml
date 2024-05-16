@@ -14,6 +14,9 @@ dependencies:
   '@sveltestrap/sveltestrap':
     specifier: ^6.2.7
     version: 6.2.7(svelte@4.2.14)
+  '@uwx/libav.js-all':
+    specifier: 6.0.0-nightly.25.942e7c.ffmpeg.6.1.1
+    version: 6.0.0-nightly.25.942e7c.ffmpeg.6.1.1
   buffer:
     specifier: ^6.0.3
     version: 6.0.3
@@ -694,6 +697,10 @@ packages:
   /@types/pug@2.0.10:
     resolution: {integrity: sha512-Sk/uYFOBAB7mb74XcpizmH0KOR2Pv3D2Hmrh1Dmy5BmK3MpdSa5kqZcg6EKBdklU0bFXX9gCfzvpnyUehrPIuA==}
     dev: true
+
+  /@uwx/libav.js-all@6.0.0-nightly.25.942e7c.ffmpeg.6.1.1:
+    resolution: {integrity: sha512-POat2qK0ijXu2UMbAsIRxMx8nxsJ66xk48xkouxpVz5JHDyCBrnWhuAWTz/4IhguPzpMfByZGKzQP9ghX0fPkA==}
+    dev: false
 
   /acorn@8.11.3:
     resolution: {integrity: sha512-Y9rRfJG5jcKOE0CLisYbojUjIrIEE7AGMzA/Sm4BslANhbS+cDMpgBdcPT91oJ7OuJ9hYJBx59RjbhxVnrF8Xg==}

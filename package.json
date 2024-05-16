@@ -26,6 +26,7 @@
     "@imagemagick/magick-wasm": "^0.0.29",
     "@sgtpooki/file-type": "^1.0.1",
     "@sveltestrap/sveltestrap": "^6.2.7",
+    "@uwx/libav.js-all": "6.0.0-nightly.25.942e7c.ffmpeg.6.1.1",
     "buffer": "^6.0.3",
     "comlink": "^4.4.1",
     "file-type": "^19.0.0",
